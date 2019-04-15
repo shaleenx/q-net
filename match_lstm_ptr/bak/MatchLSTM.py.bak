@@ -41,13 +41,10 @@ class MatchLSTM(nn.Module):
     if self.use_glove:
       embeddings = np.zeros((self.vocab_size, self.embed_size))
       with open(self.glove_path) as f:
-        for line in f.readlines():
-          line = line.split(" ")
+        for line in f:
+          line = line.split()
           if line[0] in self.word_to_index:
-            try:
-              embeddings[self.word_to_index[line[0]]] = np.array(list(map(float,line[1:])))
-            except(ValueError):
-              print(line[0], "|||||",  line[1:])
+            embeddings[self.word_to_index[line[0]]] = np.array(map(float,line[1:]))
       for i, embedding in enumerate(embeddings):
         if sum(embedding) == 0:
           self.oov_count += 1

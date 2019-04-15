@@ -1,5 +1,5 @@
 import argparse
-import pickle as pickle
+import cPickle as pickle
 import json
 import numpy as np
 import os
@@ -8,7 +8,6 @@ import sys
 import time
 import torch
 import torch.nn as nn
-from functools import cmp_to_key
 
 from operator import itemgetter
 from torch.autograd import Variable
@@ -76,29 +75,17 @@ def read_and_process_data(args):
   
   # Sort data by increasing question+answer length, for efficient batching.
   # Data format = (tokenized_question, tokenized_answer, question_id).
-  print("Sorting datasets in decreasing order of (para + question) lengths.")
-  #train.sort(key=cmp_to_key(lambda x, y: len(x[0]) + len(train_tokenized_paras[train_ques_to_para[x[2]]])))
-  #dev.sort(key=cmp_to_key(lambda x: len(x[0]) + len(train_tokenized_paras[train_ques_to_para[x[2]]])))
-  #test.sort(key=cmp_to_key(lambda x: len(x[0]) + len(train_tokenized_paras[train_ques_to_para[x[2]]])))
-  train.sort(key=cmp_to_key(lambda x,y:\
+  print "Sorting datasets in decreasing order of (para + question) lengths."
+  train.sort(cmp=lambda x,y:\
       len(x[0]) + len(train_tokenized_paras[train_ques_to_para[x[2]]]) -\
-      (len(y[0]) + len(train_tokenized_paras[train_ques_to_para[y[2]]]))))
-  dev.sort(key=cmp_to_key(lambda x,y:\
+      (len(y[0]) + len(train_tokenized_paras[train_ques_to_para[y[2]]])))
+  dev.sort(cmp=lambda x,y:\
       len(x[0]) + len(dev_tokenized_paras[dev_ques_to_para[x[2]]]) -\
-      (len(y[0]) + len(dev_tokenized_paras[dev_ques_to_para[y[2]]]))))
-  test.sort(key=cmp_to_key(lambda x,y:\
+      (len(y[0]) + len(dev_tokenized_paras[dev_ques_to_para[y[2]]])))
+  test.sort(cmp=lambda x,y:\
       len(x[0]) + len(test_tokenized_paras[test_ques_to_para[x[2]]]) -\
-      (len(y[0]) + len(test_tokenized_paras[test_ques_to_para[y[2]]]))))
-  #train.sort(cmp=lambda x,y:\
-  #    len(x[0]) + len(train_tokenized_paras[train_ques_to_para[x[2]]]) -\
-  #    (len(y[0]) + len(train_tokenized_paras[train_ques_to_para[y[2]]])))
-  #dev.sort(cmp=lambda x,y:\
-  #    len(x[0]) + len(dev_tokenized_paras[dev_ques_to_para[x[2]]]) -\
-  #    (len(y[0]) + len(dev_tokenized_paras[dev_ques_to_para[y[2]]])))
-  #test.sort(cmp=lambda x,y:\
-  #    len(x[0]) + len(test_tokenized_paras[test_ques_to_para[x[2]]]) -\
-  #    (len(y[0]) + len(test_tokenized_paras[test_ques_to_para[y[2]]])))
-  print("Done.")
+      (len(y[0]) + len(test_tokenized_paras[test_ques_to_para[y[2]]])))
+  print "Done."
 
   # Debug flag reduces size of input data, for testing purposes.
   if args.debug:
@@ -109,7 +96,7 @@ def read_and_process_data(args):
   train_order = [ i for i in range(0, len(train), batch_size) ]
   dev_order = [ i for i in range(0, len(dev), test_batch_size) ]
   test_order = [ i for i in range(0, len(test), test_batch_size) ]
-  print("Done.")
+  print "Done."
 
   return train, dev, test, batch_size, test_batch_size, train_ques_to_para,\
          dev_ques_to_para, test_ques_to_para, train_tokenized_paras,\
@@ -133,17 +120,17 @@ def build_model(args, vocab_size, index_to_word, word_to_index):
              'index_to_word': index_to_word,
              'word_to_index': word_to_index,
              'cuda': args.cuda }
-  print("Building model.")
+  print "Building model."
   model = MatchLSTM(config)
-  print("Done!")
+  print "Done!"
   sys.stdout.flush()
 
-  print("%d OOV words." % model.oov_count)
-  print("OOV Words:", end=' ')
-  print(model.oov_list[:10])
+  print "%d OOV words." % model.oov_count
+  print "OOV Words:",
+  print model.oov_list[:10]
 
   if not args.disable_glove:
-    print("Embedding dim:", model.embedding.shape)
+    print "Embedding dim:", model.embedding.shape
 
   if args.cuda:
     model = model.cuda()
@@ -171,28 +158,28 @@ def train_model(args):
   last_done_epoch = config['ckpt']
   if last_done_epoch > 0:
     model = model.load(args.model_dir, last_done_epoch)
-    print("Loaded model.")
+    print "Loaded model."
     if not args.disable_glove:
-      print("Embedding shape:", model.embedding.shape)
+      print "Embedding shape:", model.embedding.shape
 
   if args.model_file is not None:
     model = model.load_from_file(args.model_file)
-    print("Loaded model from %s." % args.model_file)
+    print "Loaded model from %s." % args.model_file
 
   start_time = time.time()
-  print("Starting training.")
+  print "Starting training."
 
   if args.optimizer == "SGD":
-    print("Using SGD optimizer.")
+    print "Using SGD optimizer."
     optimizer = SGD(model.parameters(), lr = args.learning_rate)
   elif args.optimizer == "Adamax":
-    print("Using Adamax optimizer.")
+    print "Using Adamax optimizer."
     optimizer = Adamax(model.parameters(), lr = args.learning_rate)
     if last_done_epoch > 0:
       if os.path.exists(args.model_dir + "/optim_%d.pt" % last_done_epoch):
         optimizer = torch.load(args.model_dir + "/optim_%d.pt" % last_done_epoch)
       else:
-        print("Optimizer saved state not found. Not loading optimizer.")
+        print "Optimizer saved state not found. Not loading optimizer."
   else:
     assert False, "Unrecognized optimizer."
   print(model)
@@ -202,9 +189,9 @@ def train_model(args):
     train_loss_sum = 0.0
     model.train()
     for i, num in enumerate(train_order):
-      print("\rTrain epoch %d, %.2f s - (Done %d of %d)" %\
+      print "\rTrain epoch %d, %.2f s - (Done %d of %d)" %\
             (EPOCH, (time.time()-start_t)*(len(train_order)-i-1)/(i+1), i+1,
-             len(train_order)), end=' ')
+             len(train_order)),
 
       # Create next batch by getting lengths and padding
       train_batch = train[num:num+batch_size]
@@ -235,12 +222,12 @@ def train_model(args):
       optimizer.step()
       train_loss_sum += model.loss.data[0]
 
-      print("Loss: %.5f (in time %.2fs)" % \
-            (train_loss_sum/(i+1), time.time() - start_t), end=' ')
+      print "Loss: %.5f (in time %.2fs)" % \
+            (train_loss_sum/(i+1), time.time() - start_t),
       sys.stdout.flush()
 
-    print("\nLoss: %.5f (in time %.2fs)" % \
-          (train_loss_sum/len(train_order), time.time() - start_t))
+    print "\nLoss: %.5f (in time %.2fs)" % \
+          (train_loss_sum/len(train_order), time.time() - start_t)
 
     # End of epoch.
     random.shuffle(train_order)
@@ -257,13 +244,13 @@ def train_model(args):
     dev_start_t = time.time()
     dev_loss_sum = 0.0
     all_predictions = {}
-    print("\nRunning on Dev.")
+    print "\nRunning on Dev."
 
     model.eval()
     for i, num in enumerate(dev_order):
-      print("\rDev: %.2f s (Done %d of %d)" %\
+      print "\rDev: %.2f s (Done %d of %d)" %\
             ((time.time()-dev_start_t)*(len(dev_order)-i-1)/(i+1), i+1,
-            len(dev_order)), end=' ')
+            len(dev_order)),
 
       dev_batch = dev[num:num+test_batch_size]
 
@@ -322,19 +309,19 @@ def train_model(args):
         all_predictions[qid] = answer
 
       dev_loss_sum += model.loss.data[0]
-      print("[Average loss : %.5f]" % (dev_loss_sum/(i+1)), end=' ')
+      print "[Average loss : %.5f]" % (dev_loss_sum/(i+1)),
       sys.stdout.flush()
 
     # Print dev stats for epoch
-    print("\nDev Loss: %.4f (in time: %.2f s)" %\
-          (dev_loss_sum/len(dev_order), (time.time() - dev_start_t)))
+    print "\nDev Loss: %.4f (in time: %.2f s)" %\
+          (dev_loss_sum/len(dev_order), (time.time() - dev_start_t))
 
     # Dump the results json in the required format
-    print("Dumping prediction results.")
+    print "Dumping prediction results."
     json.dump(
       all_predictions,
       open(args.model_dir + "/dev_predictions_" + str(EPOCH) + ".json", "w"))
-    print("Done.")
+    print "Done."
 #------------------------------------------------------------------------------#
 
 
@@ -355,13 +342,13 @@ def test_model(args):
   #------------------------- Reload and test model ----------------------------#
   if args.model_file is not None:
     model = model.load_from_file(args.model_file)
-    print("Loaded model from %s." % args.model_file)
+    print "Loaded model from %s." % args.model_file
   else:
     last_done_epoch = config['ckpt']
     model = model.load(args.model_dir, last_done_epoch)
-    print("Loaded model.")
+    print "Loaded model."
     if not args.disable_glove:
-      print("Embedding shape:", model.embedding.shape)
+      print "Embedding shape:", model.embedding.shape
 
   test_start_t = time.time()
   test_loss_sum = 0.0
@@ -371,9 +358,9 @@ def test_model(args):
   model.eval()
 
   for i, num in enumerate(test_order):
-    print("\rTest: %.2f s (Done %d of %d) " %\
+    print "\rTest: %.2f s (Done %d of %d) " %\
           ((time.time()-test_start_t)*(len(test_order)-i-1)/(i+1), i+1,
-          len(test_order)), end=' ')
+          len(test_order)),
 
     test_batch = test[num:num+test_batch_size]
     batch_size = len(test_batch)
@@ -455,15 +442,15 @@ def test_model(args):
         attention_ends[qids[idx]] = (distributions[1][idx], [ans_in[1][idx]])
 
     test_loss_sum += model.loss.data[0]
-    print("[Average loss : %.5f]" % (test_loss_sum/(i+1)), end=' ')
+    print "[Average loss : %.5f]" % (test_loss_sum/(i+1)),
     sys.stdout.flush()
 
   # Print stats
-  print("\nTest Loss: %.4f (in time: %.2f s)" %\
-        (test_loss_sum/len(test_order), (time.time() - test_start_t)))
+  print "\nTest Loss: %.4f (in time: %.2f s)" %\
+        (test_loss_sum/len(test_order), (time.time() - test_start_t))
 
   # Dump the results json in the required format
-  print("Dumping prediction results.")
+  print "Dumping prediction results."
   json.dump(all_predictions, open(args.predictions_output_json, "w"))
 
   # Dump attention start and end distributions.
@@ -471,7 +458,7 @@ def test_model(args):
               open(args.predictions_output_json + "_starts.p", "wb"))
   pickle.dump(attention_ends,
               open(args.predictions_output_json + "_ends.p", "wb"))
-  print("Done.")
+  print "Done."
 #------------------------------------------------------------------------------#
 
 if __name__ == "__main__":
@@ -481,5 +468,5 @@ if __name__ == "__main__":
   elif args.run_type == "test":
     test_model(args)
   else:
-    print("Invalid run type:", args.run_type)
+    print "Invalid run type:", args.run_type
 

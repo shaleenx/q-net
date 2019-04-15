@@ -1,11 +1,10 @@
-import pickle as pickle
+import cPickle as pickle
 import json
 import numpy
 import string
 import sys
 
 from nltk.tokenize import sent_tokenize, word_tokenize
-import imp
 
 class Dictionary:
   def __init__(self, lowercase=True, remove_punctuation=True,
@@ -95,15 +94,15 @@ class Data:
     tokenized_para = [ [ self.dictionary.add_or_get_index(word) \
                          for word in word_tokenize(sent) ] \
                            for sent in sent_tokenize(para_text) ]
-    tokenized_para = [ [_f for _f in x if _f] for x in tokenized_para ]
+    tokenized_para = [ filter(None, x) for x in tokenized_para ]
     tokenized_para = [ x for x in tokenized_para if len(x) > 0 ]
     joined_para = []
-    list(map(joined_para.extend, tokenized_para))
+    map(joined_para.extend, tokenized_para)
 
     
     sentences = len(tokenized_para)
     if sentences == 0:
-      print("Found no sentences for para:", para_text)
+      print "Found no sentences for para:", para_text
       return None
 
     return joined_para
@@ -132,7 +131,7 @@ class Data:
       # Tokenize question
       processed_question = [ self.dictionary.add_or_get_index(word) \
                                for word in word_tokenize(qa['question']) ]
-      processed_question = [_f for _f in processed_question if _f]
+      processed_question = filter(None, processed_question)
 
       # Tokenize answer phrases
       processed_answers = []
@@ -152,12 +151,12 @@ class Data:
         # Valid answers should lie within bounds.
         if answer_idxs[0] < 0 or answer_idxs[0] >= len(tokenized_para) \
            or answer_idxs[1] < 0 or answer_idxs[1] >= len(tokenized_para):
-          print("\n" * 3)
-          print("Invalid answer \"%s\" ignored. (%d,%d)\n" % \
-                (answer['text'], answer_idxs[0], answer_idxs[1]))
-          print("Question: %s\n" % qa['question'])
-          print("Paragraph: %s" % para_text)
-          print("\n" * 3)
+          print "\n" * 3
+          print "Invalid answer \"%s\" ignored. (%d,%d)\n" % \
+                (answer['text'], answer_idxs[0], answer_idxs[1])
+          print "Question: %s\n" % qa['question']
+          print "Paragraph: %s" % para_text
+          print "\n" * 3
           self.missed += 1
           continue
 
@@ -187,10 +186,10 @@ class Data:
         # Read each para for each article
         for para_index, paragraph in enumerate(article['paragraphs']):
           self.add_paragraph(paragraph)
-          print("\r%d Articles, %d Paragraphs processed." \
-                  % (article_index+1, para_index+1), end=' ')
+          print "\r%d Articles, %d Paragraphs processed." \
+                  % (article_index+1, para_index+1),
           sys.stdout.flush()
-      print("")
+      print ""
 
     return dev_data
 
@@ -205,10 +204,10 @@ def pad(seq, element, length):
 # pickles if necessary.
 def read_data(train_json, train_pickle, dev_json, dev_pickle, max_train_articles,
               max_dev_articles, dump_pickles):
-  imp.reload(sys)
-  #sys.setdefaultencoding('utf-8')
+  reload(sys)
+  sys.setdefaultencoding('utf-8')
   train_data = Data()
-  print("Reading training data.")
+  print "Reading training data."
   if train_json:
     train_data.read_from_file(train_json, max_train_articles)
   else:
@@ -216,28 +215,28 @@ def read_data(train_json, train_pickle, dev_json, dev_pickle, max_train_articles
 
   dev_data = Data(train_data.dictionary)
   if dev_json:
-    print("Reading dev data.")
+    print "Reading dev data."
     dev_json_data = dev_data.read_from_file(dev_json, max_dev_articles)
   else:
-    print("Reading dev data.")
+    print "Reading dev data."
     dev_data = dev_data.read_from_pickle(dev_pickle)
-    print("Done.")
+    print "Done."
 
   if dump_pickles:
     assert not train_pickle == None
     assert not dev_pickle == None
-    print("Dumping pickles.")
+    print "Dumping pickles."
     train_data.dump_pickle(train_pickle)
     dev_data.dump_pickle(dev_pickle)
-    print("Done.")
+    print "Done."
 
-  print("Finished reading all required data.")
-  print("Train missed %d questions, Dev missed %d." % (train_data.missed, dev_data.missed))
+  print "Finished reading all required data."
+  print "Train missed %d questions, Dev missed %d." % (train_data.missed, dev_data.missed)
 
-  print("Done.")
-  print("Train vocab size is:", train_data.dictionary.size())
-  print("Dev vocab size is:", dev_data.dictionary.size())
-  print("Sample words:", train_data.dictionary.index_to_word[:10])
+  print "Done."
+  print "Train vocab size is:", train_data.dictionary.size()
+  print "Dev vocab size is:", dev_data.dictionary.size()
+  print "Sample words:", train_data.dictionary.index_to_word[:10]
 
   return train_data, dev_data
 
